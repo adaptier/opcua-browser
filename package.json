@@ -1,0 +1,29 @@
+{
+  "name": "opcua-browser",
+  "version": "1.0.0",
+  "description": "A CLI-based OPC-UA browser with optional interactive TUI",
+  "main": "dist/index.js",
+  "bin": {
+    "opcua-browser": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["opc-ua", "browser", "cli", "tui"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "node-opcua": "^2.100.0",
+    "commander": "^11.0.0",
+    "blessed": "^0.1.81",
+    "@types/blessed": "^0.1.19"
+  }
+}
