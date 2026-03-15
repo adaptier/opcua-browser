@@ -14,10 +14,102 @@ interface NodeInfo {
   covLog?: string[];
 }
 
-export async function startTUI(endpoint: string): Promise<void> {
-  const client = OPCUAClient.create({ endpointMustExist: false });
+export async function startTUI(initialEndpoint?: string): Promise<void> {
+  // Screen is created first so the connection dialog can be shown before connecting
+  const screen = blessed.screen({ smartCSR: true, title: 'OPC-UA Browser' });
 
-  let session: any;
+  // ── Connection dialog ─────────────────────────────────────────────────
+
+  const connectDialog = blessed.box({
+    parent: screen,
+    top: 'center', left: 'center',
+    width: 62, height: 11,
+    border: 'line', label: ' Connect to OPC-UA Server ',
+    style: { border: { fg: 'blue' }, bg: 'black' },
+  });
+
+  blessed.text({
+    parent: connectDialog,
+    top: 0, left: 1,
+    content: 'Endpoint URL:',
+    style: { fg: 'white', bg: 'black' },
+  });
+
+  const connectInput = blessed.textbox({
+    parent: connectDialog,
+    top: 1, left: 1, width: '100%-4', height: 3,
+    border: 'line', inputOnFocus: true,
+    style: {
+      border: { fg: 'cyan' }, focus: { border: { fg: 'white' } },
+      bg: 'black', fg: 'white',
+    },
+  });
+
+  const connectError = blessed.text({
+    parent: connectDialog,
+    top: 5, left: 1, width: '100%-4', height: 1,
+    style: { fg: 'red', bg: 'black' },
+  });
+
+  blessed.text({
+    parent: connectDialog,
+    top: 7, left: 1, width: '100%-4', height: 1,
+    content: 'Enter: Connect   Esc: Quit',
+    style: { fg: 'gray', bg: 'black' },
+  });
+
+  // Returns a connected { endpoint, client, session } or null if user quits
+  const getConnection = (): Promise<{ endpoint: string; client: OPCUAClient; session: any } | null> => {
+    return new Promise((resolve) => {
+      const tryConnect = async (url: string) => {
+        connectError.setContent('Connecting…');
+        connectInput.hide();
+        screen.render();
+        try {
+          const newClient = OPCUAClient.create({ endpointMustExist: false });
+          await newClient.connect(url);
+          const newSession = await newClient.createSession();
+          resolve({ endpoint: url, client: newClient, session: newSession });
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          showDialog(url, msg);
+        }
+      };
+
+      const showDialog = (prefill: string, errorMsg = '') => {
+        connectError.setContent(errorMsg);
+        connectInput.setValue(prefill);
+        connectInput.show();
+        connectInput.focus();
+        screen.render();
+
+        connectInput.once('cancel', () => {
+          screen.destroy();
+          resolve(null);
+        });
+
+        connectInput.once('submit', (value: string) => {
+          connectInput.removeAllListeners('cancel');
+          tryConnect(value.trim() || prefill);
+        });
+      };
+
+      if (initialEndpoint) {
+        // Try the provided endpoint immediately; fall back to dialog on error
+        tryConnect(initialEndpoint);
+      } else {
+        showDialog('opc.tcp://localhost:4840');
+      }
+    });
+  };
+
+  const conn = await getConnection();
+  if (!conn) return;
+
+  const { endpoint, client, session: initialSession } = conn;
+  connectDialog.destroy();
+
+  let session: any = initialSession;
   let subscription: ClientSubscription | null = null;
   let navigationHistory: string[] = ['RootFolder'];
   let currentNodeId = 'RootFolder';
@@ -29,11 +121,6 @@ export async function startTUI(endpoint: string): Promise<void> {
   let covNode: NodeInfo | null = null; // variable whose COV log is shown
 
   try {
-    console.log(`Connecting to ${endpoint}...`);
-    await client.connect(endpoint);
-    session = await client.createSession();
-    console.log('Connected. Starting TUI...');
-
     subscription = ClientSubscription.create(session, {
       requestedPublishingInterval: 1000,
       requestedLifetimeCount: 100,
@@ -44,8 +131,6 @@ export async function startTUI(endpoint: string): Promise<void> {
     });
 
     // ── Widgets ───────────────────────────────────────────────────────────
-
-    const screen = blessed.screen({ smartCSR: true, title: 'OPC-UA Browser' });
 
     const status = blessed.box({
       parent: screen, top: 0, left: 0, width: '100%', height: 1,
