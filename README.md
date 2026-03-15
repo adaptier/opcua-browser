@@ -1,19 +1,17 @@
 # OPC-UA Browser
 
-A CLI-based OPC-UA browser with an optional interactive TUI, built with Node.js and TypeScript.
+A CLI and interactive TUI for browsing OPC-UA servers, built with Node.js and TypeScript.
 
 ## Features
 
-- **CLI Mode**: Displays detailed information about nodes including Node ID, Browse Name, Display Name, Node Class, and for Variables: Data Type, Current Value, and Access Level
-- **TUI Mode**: Interactive terminal interface with a list view and detailed information panel showing comprehensive node information
+- **Split-pane TUI**: node tree on the left, live details on the right
+- **Live value monitoring**: all variables are subscribed automatically; values update in real time
+- **COV log**: per-variable timestamped change log
+- **Write support**: edit writable variables with inline error feedback
+- **Search/filter**: filter the current node list by name
+- **CLI mode**: dump root folder contents to stdout
 
-## Installation
-
-```bash
-npm install -g .
-```
-
-Or run locally:
+## Setup
 
 ```bash
 npm install
@@ -22,58 +20,62 @@ npm run build
 
 ## Usage
 
-### CLI Mode
-
-Browse the OPC-UA server and display detailed root folder contents:
+### CLI mode
 
 ```bash
-opcua-browser opc.tcp://localhost:54840
+npm start -- opc.tcp://localhost:4840
 ```
 
-Output includes:
-- Node ID
-- Browse Name
-- Display Name
-- Node Class
-- For Variables: Data Type, Current Value, Access Level
+Prints Node ID, Browse Name, Display Name, Node Class, and for variables: Data Type, Current Value, Access Level.
 
-### TUI Mode
-
-Start the interactive TUI for browsing:
+### TUI mode
 
 ```bash
-opcua-browser opc.tcp://localhost:54840 --tui
+npm start -- --tui opc.tcp://localhost:4840
 ```
 
-In TUI mode:
+## TUI keybindings
+
+### Navigation
 
 | Key | Action |
 |-----|--------|
-| `↑` / `↓` | Navigate node list |
-| `Enter` | Browse into selected node |
-| `←` / `Backspace` | Go back to parent node |
-| `e` | Open write dialog for writable variables |
+| `↑` / `↓` | Move cursor |
+| `Enter` / `→` | Browse into selected node |
+| `←` / `Backspace` | Go back to parent |
+| `/` | Search / filter current list |
 | `q` / `Ctrl+C` | Quit |
 
-**Write dialog** (`e`):
+### Variables
 
 | Key | Action |
 |-----|--------|
-| `Enter` | Submit new value |
+| `e` | Write new value (writable variables only) |
+| `r` | Refresh value from server |
+| `s` | Toggle COV log (timestamped change history) |
+
+### Write dialog
+
+| Key | Action |
+|-----|--------|
+| `Enter` | Submit value |
 | `Esc` | Cancel |
 
-Values are entered as JSON (e.g. `25.5`, `true`, `"hello"`).
+Values are entered as JSON — e.g. `25.5`, `true`, `"hello"`.
 
-## Dependencies
+### Search
 
-- node-opcua: For OPC-UA client functionality
-- commander: For CLI argument parsing
-- blessed: For terminal UI
+| Key | Action |
+|-----|--------|
+| `/` | Enter search mode |
+| `Enter` | Confirm filter and return to navigation |
+| `Esc` | Clear filter and return to navigation |
 
 ## Development
 
 ```bash
-npm run dev  # Run with ts-node
-npm run build  # Build to dist/
-npm start  # Run built version
+npm run dev    # run directly with ts-node (no build step)
+npm run build  # compile TypeScript → dist/
+npm start      # run compiled version
+npm run clean  # remove dist/
 ```
