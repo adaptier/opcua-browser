@@ -2,7 +2,7 @@
 
 A CLI and interactive TUI for browsing OPC-UA servers, built with Node.js and TypeScript.
 
-![OPC-UA Browser TUI](assets/images/opcua-browser-screenshot.png)
+![OPC-UA Browser TUI](https://raw.githubusercontent.com/adaptier/opcua-browser/main/assets/images/opcua-browser-screenshot.png)
 
 ## Features
 
