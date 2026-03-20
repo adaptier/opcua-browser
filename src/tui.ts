@@ -15,8 +15,31 @@ interface NodeInfo {
 }
 
 export async function startTUI(initialEndpoint?: string): Promise<void> {
+  // Suppress all console/stream output for the duration of the TUI session.
+  // node-opcua writes warnings via console.warn/log and directly to stderr —
+  // all of these bypass blessed and corrupt the display.
+  const noop = () => true as any;
+  const origStderrWrite = process.stderr.write.bind(process.stderr);
+  const origConsole = { log: console.log, warn: console.warn, error: console.error, info: console.info, debug: console.debug };
+  process.stderr.write = noop;
+  console.log = noop; console.warn = noop; console.error = noop; console.info = noop; console.debug = noop;
+  const restoreStderr = () => {
+    process.stderr.write = origStderrWrite;
+    Object.assign(console, origConsole);
+  };
+
   // Screen is created first so the connection dialog can be shown before connecting
   const screen = blessed.screen({ smartCSR: true, title: 'OPC-UA Browser' });
+
+  // Ensure the terminal is restored if an unhandled error crashes the process
+  const emergencyExit = (err: unknown) => {
+    restoreStderr();
+    screen.destroy();
+    console.error(err);
+    process.exit(1);
+  };
+  process.once('uncaughtException', emergencyExit);
+  process.once('unhandledRejection', emergencyExit);
 
   // ── Connection dialog ─────────────────────────────────────────────────
 
@@ -66,7 +89,10 @@ export async function startTUI(initialEndpoint?: string): Promise<void> {
         connectInput.hide();
         screen.render();
         try {
-          const newClient = OPCUAClient.create({ endpointMustExist: false });
+          const newClient = OPCUAClient.create({
+            endpointMustExist: false,
+            connectionStrategy: { maxRetry: 0, initialDelay: 1000, maxDelay: 1000 },
+          });
           await newClient.connect(url);
           const newSession = await newClient.createSession();
           resolve({ endpoint: url, client: newClient, session: newSession });
@@ -587,6 +613,9 @@ export async function startTUI(initialEndpoint?: string): Promise<void> {
     // Quit
     screen.key(['q', 'C-c'], async () => {
       if (overlayOpen || searchMode) return;
+      process.off('uncaughtException', emergencyExit);
+      process.off('unhandledRejection', emergencyExit);
+      restoreStderr();
       if (subscription) await subscription.terminate();
       await session.close();
       await client.disconnect();
@@ -597,6 +626,10 @@ export async function startTUI(initialEndpoint?: string): Promise<void> {
     screen.render();
 
   } catch (error) {
+    process.off('uncaughtException', emergencyExit);
+    process.off('unhandledRejection', emergencyExit);
+    restoreStderr();
+    screen.destroy();
     console.error('Error:', error);
     if (subscription) await subscription.terminate();
     if (session) await session.close();

@@ -2,6 +2,8 @@
 
 A CLI and interactive TUI for browsing OPC-UA servers, built with Node.js and TypeScript.
 
+![OPC-UA Browser TUI](assets/images/opcua-browser-screenshot.png)
+
 ## Features
 
 - **Split-pane TUI**: node tree on the left, live details on the right
@@ -11,7 +13,23 @@ A CLI and interactive TUI for browsing OPC-UA servers, built with Node.js and Ty
 - **Search/filter**: filter the current node list by name
 - **CLI mode**: dump root folder contents to stdout
 
-## Setup
+## Installation
+
+### Global install
+
+```bash
+npm install
+npm run build
+npm install -g .
+```
+
+Then use it from anywhere:
+
+```bash
+opcua-browser --tui opc.tcp://localhost:4840
+```
+
+### Local
 
 ```bash
 npm install
